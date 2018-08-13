@@ -23,7 +23,6 @@ http://www.pandamatak.com/people/anand/xfer/histo
 
 http://github.com/bitly/data_hacks
 """
-from decimal import Decimal
 import math
 import sys
 
@@ -32,17 +31,15 @@ class MVSD(object):
     """ A class that calculates a running Mean / Variance / Standard Deviation"""
     def __init__(self):
         self.is_started = False
-        self.ss = Decimal(0) # (running) sum of square deviations from mean
-        self.m = Decimal(0) # (running) mean
-        self.total_w = Decimal(0) # weight of items seen
+        self.ss = 0 # (running) sum of square deviations from mean
+        self.m = 0 # (running) mean
+        self.total_w = 0 # weight of items seen
 
     def add(self, x, w=1):
         """ add another datapoint to the Mean / Variance / Standard Deviation"""
-        if not isinstance(x, Decimal):
-            x = Decimal(x)
         if not self.is_started:
             self.m = x
-            self.ss = Decimal(0)
+            self.ss = 0
             self.total_w = w
             self.is_started = True
         else:
@@ -51,7 +48,7 @@ class MVSD(object):
             self.m += (x - self.m) / temp_w
             self.total_w = temp_w
 
-        # print "added %-2d mean=%0.2f var=%0.2f std=%0.2f" % (x, self.mean(), self.var(), self.sd())
+        # print("added %-2d mean=%0.2f var=%0.2f std=%0.2f" % (x, self.mean(), self.var(), self.sd()))
 
     def var(self):
         return self.ss / self.total_w
@@ -74,12 +71,12 @@ def test_mvsd():
 def median(values):
     length = len(values)
     if length%2:
-        median_indeces = [length/2]
+        median_indeces = [length//2]
     else:
-        median_indeces = [length/2-1, length/2]
+        median_indeces = [length//2-1, length//2]
 
     values = sorted(values)
-    return sum([values[i] for i in median_indeces]) / len(median_indeces)
+    return sum([values[i] for i in median_indeces]) // len(median_indeces)
 
 def test_median():
     assert 6 == median([8,7,9,1,2,6,3]) # odd-sized list
@@ -98,19 +95,19 @@ def histogram(stream, minimum=None, maximum=None, buckets=None, custbuckets=None
     custbuckets: Comma seperated list of bucket edges for the histogram
     calc_msvd: Calculate and display Mean, Variance and SD.
     """
-    if not minimum or not maximum:
+    if minimum is None or maximum is None:
         # glob the iterator here so we can do min/max on it
         data = list(stream)
     else:
         data = stream
     bucket_scale = 1
 
-    if minimum:
-        min_v = Decimal(minimum)
+    if minimum is not None:
+        min_v = minimum
     else:
         min_v = min(data)
-    if maximum:
-        max_v = Decimal(maximum)
+    if maximum is not None:
+        max_v = maximum
     else:
         max_v = max(data)
 
@@ -141,10 +138,10 @@ def histogram(stream, minimum=None, maximum=None, buckets=None, custbuckets=None
         bucket_counts = [0 for x in range(len(boundaries))]
         buckets = len(boundaries)
     else:
-        buckets = buckets or 10
+        buckets = min(buckets or 10, max_v)
         if buckets <= 0:
             raise ValueError('# of buckets must be > 0')
-        step = diff / buckets
+        step = math.ceil(diff/buckets)
         bucket_counts = [0 for x in range(buckets)]
         for x in range(buckets):
             boundaries.append(min_v + (step * (x + 1)))
@@ -171,12 +168,12 @@ def histogram(stream, minimum=None, maximum=None, buckets=None, custbuckets=None
     if max(bucket_counts) > 75:
         bucket_scale = int(max(bucket_counts) / 75)
 
-    print "# NumSamples = %d; Min = %0.2f; Max = %0.2f" % (samples, min_v, max_v)
+    print("# NumSamples = %d; Min = %0.2f; Max = %0.2f" % (samples, min_v, max_v))
     if skipped:
-        print "# %d value%s outside of min/max" % (skipped, skipped > 1 and 's' or '')
+        print("# %d value%s outside of min/max" % (skipped, skipped > 1 and 's' or ''))
     if calc_msvd:
-        print "# Mean = %f; Variance = %f; SD = %f; Median %f" % (mvsd.mean(), mvsd.var(), mvsd.sd(), median(accepted_data))
-    print "# each ∎ represents a count of %d" % bucket_scale
+        print("# Mean = %f; Variance = %f; SD = %f; Median %f" % (mvsd.mean(), mvsd.var(), mvsd.sd(), median(accepted_data)))
+    print("# each ∎ represents a count of %d" % bucket_scale)
     bucket_min = min_v
     bucket_max = min_v
     for bucket in range(buckets):
@@ -185,6 +182,6 @@ def histogram(stream, minimum=None, maximum=None, buckets=None, custbuckets=None
         bucket_count = bucket_counts[bucket]
         star_count = 0
         if bucket_count:
-            star_count = bucket_count / bucket_scale
-        print '%10.4f - %10.4f [%6d]: %s' % (bucket_min, bucket_max, bucket_count, '∎' * star_count)
+            star_count = math.ceil(bucket_count/bucket_scale)
+        print('%10.4f - %10.4f [%6d]: %s' % (bucket_min, bucket_max, bucket_count, '∎' * star_count))
 
